@@ -1,0 +1,44 @@
+name: Build IPA
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install CocoaPods
+        run: |
+          cd Example
+          pod install
+
+      - name: Build Archive
+        run: |
+          xcodebuild archive \
+            -workspace Example/NISDK3.xcworkspace \
+            -scheme NISDK3-Example \
+            -configuration Release \
+            -archivePath $PWD/build/App.xcarchive \
+            -destination "generic/platform=iOS" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Create IPA
+        run: |
+          mkdir -p build/Payload
+          cp -r build/App.xcarchive/Products/Applications/*.app build/Payload/
+          cd build
+          zip -r App.ipa Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: App-IPA
+          path: build/App.ipa
